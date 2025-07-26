@@ -5,7 +5,8 @@ export default function Books() {
   const [books, setBooks] = useState([]);
   const [form, setForm] = useState({ title: '', author: '', genre: '', year: '' });
   const [isEditing, setIsEditing] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  const [originalTitle, setOriginalTitle] = useState('');
+  const [originalAuthor, setOriginalAuthor] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -36,7 +37,7 @@ export default function Books() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const { title, author } = form;
+    const { title, author, genre, year } = form;
 
     if (!title.trim() || !author.trim()) {
       alert('Title and Author are required.');
@@ -44,7 +45,7 @@ export default function Books() {
     }
 
     const url = isEditing
-      ? `http://localhost:5000/api/books/${editingId}`
+      ? `http://localhost:5000/api/books/${encodeURIComponent(originalTitle)}/${encodeURIComponent(originalAuthor)}`
       : 'http://localhost:5000/api/books';
     const method = isEditing ? 'PUT' : 'POST';
 
@@ -52,7 +53,7 @@ export default function Books() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ title, author, genre, year }),
       });
 
       if (!res.ok) throw new Error('Something went wrong while saving book!');
@@ -60,10 +61,13 @@ export default function Books() {
 
       if (isEditing) {
         setBooks((prev) =>
-          prev.map((book) => (book.id === editingId ? updatedBook : book))
+          prev.map((book) =>
+            book.title === originalTitle && book.author === originalAuthor ? updatedBook : book
+          )
         );
         setIsEditing(false);
-        setEditingId(null);
+        setOriginalTitle('');
+        setOriginalAuthor('');
       } else {
         setBooks((prev) => [...prev, updatedBook]);
       }
@@ -71,20 +75,25 @@ export default function Books() {
       setForm({ title: '', author: '', genre: '', year: '' });
     } catch (err) {
       alert('Failed to save book.');
+      console.error(err);
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (title, author) => {
     if (!window.confirm('Are you sure you want to delete this book?')) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/books/${id}`, {
-        method: 'DELETE',
-      });
+      const res = await fetch(
+        `http://localhost:5000/api/books/${encodeURIComponent(title)}/${encodeURIComponent(author)}`,
+        {
+          method: 'DELETE',
+        }
+      );
       if (!res.ok) throw new Error();
-      setBooks((prev) => prev.filter((book) => book.id !== id));
-    } catch {
+      setBooks((prev) => prev.filter((book) => !(book.title === title && book.author === author)));
+    } catch (err) {
       alert('Failed to delete the book.');
+      console.error(err);
     }
   };
 
@@ -95,8 +104,9 @@ export default function Books() {
       genre: book.genre,
       year: book.year,
     });
+    setOriginalTitle(book.title);
+    setOriginalAuthor(book.author);
     setIsEditing(true);
-    setEditingId(book.id);
   };
 
   const filteredBooks = books.filter((book) =>
@@ -152,7 +162,8 @@ export default function Books() {
             className={styles.cancelBtn}
             onClick={() => {
               setIsEditing(false);
-              setEditingId(null);
+              setOriginalTitle('');
+              setOriginalAuthor('');
               setForm({ title: '', author: '', genre: '', year: '' });
             }}
           >
@@ -168,15 +179,15 @@ export default function Books() {
         {filteredBooks.length === 0 ? (
           <p className={styles.noBooks}>No books found.</p>
         ) : (
-          filteredBooks.map((book) => (
-            <li key={book.id} className={styles.bookItem}>
+          filteredBooks.map((book, index) => (
+            <li key={`${book.title}-${book.author}-${index}`} className={styles.bookItem}>
               <span>
                 <strong>{book.title}</strong> by {book.author} (
                 {book.genre || 'N/A'}, {book.year || 'Unknown'})
               </span>
               <div className={styles.actions}>
                 <button onClick={() => handleEdit(book)}>Edit</button>
-                <button onClick={() => handleDelete(book.id)}>Delete</button>
+                <button onClick={() => handleDelete(book.title, book.author)}>Delete</button>
               </div>
             </li>
           ))

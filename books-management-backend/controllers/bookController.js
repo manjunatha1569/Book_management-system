@@ -11,7 +11,7 @@ exports.getAllBooks = async (req, res) => {
   }
 };
 
-// POST new book
+// POST a new book
 exports.addBook = async (req, res) => {
   const { title, author, genre, year } = req.body;
   try {
@@ -26,15 +26,20 @@ exports.addBook = async (req, res) => {
   }
 };
 
-// PUT update book
+// UPDATE a book using title + author
 exports.updateBook = async (req, res) => {
-  const { id } = req.params;
-  const { title, author, genre, year } = req.body;
+  const { title, author } = req.params;
+  const { genre, year } = req.body;
   try {
     const result = await db.query(
-      'UPDATE books SET title=$1, author=$2, genre=$3, year=$4 WHERE id=$5 RETURNING *',
-      [title, author, genre, year, id]
+      'UPDATE books SET genre = $1, year = $2 WHERE title = $3 AND author = $4 RETURNING *',
+      [genre, year, title, author]
     );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+
     res.json(result.rows[0]);
   } catch (error) {
     console.error(error);
@@ -42,11 +47,19 @@ exports.updateBook = async (req, res) => {
   }
 };
 
-// DELETE book
+// DELETE a book using title + author
 exports.deleteBook = async (req, res) => {
-  const { id } = req.params;
+  const { title, author } = req.params;
   try {
-    await db.query('DELETE FROM books WHERE id = $1', [id]);
+    const result = await db.query(
+      'DELETE FROM books WHERE title = $1 AND author = $2 RETURNING *',
+      [title, author]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+
     res.json({ message: 'Book deleted successfully' });
   } catch (error) {
     console.error(error);

@@ -1,17 +1,10 @@
 const express = require('express');
 const router = express.Router();
+const controller = require('../controllers/bookController');
 
-const {
-  getAllBooks,
-  addBook,
-  updateBook,
-  deleteBook
-} = require('../controllers/bookController');
-
-// ❌ Remove authenticateToken middleware
-router.get('/', getAllBooks);
-router.post('/', addBook);
-router.put('/:id', updateBook);
-router.delete('/:id', deleteBook);
+router.get('/', controller.getAllBooks);
+router.post('/', controller.addBook);
+router.put('/:title/:author', controller.updateBook); // title and author in URL
+router.delete('/:title/:author', controller.deleteBook); // same here
 
 module.exports = router;
